@@ -1,0 +1,103 @@
+'''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+            background-color: black;
+            color: white;
+        }
+        #greeting {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 8px;
+            margin: 10px;
+            font-size: 16px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 4px;
+            width: 400px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        #videoContainer {
+            margin-top: 20px;
+            min-width: 560px;
+            min-height: 315px;
+            border: 1px solid #666;
+        }
+        #metadata {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 4px;
+            width: 80%;
+            max-width: 800px;
+        }
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #444;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h3 id="greeting">YouTube Video Analyzer</h3>
+    <form method="POST">
+        <input 
+            type="text" 
+            name="url"
+            placeholder="Enter YouTube URL (e.g., https://www.youtube.com/watch?v=...)"
+            value="{{ url if url else '' }}"
+        >
+        <button type="submit">Analyze Video</button>
+    </form>
+    {% if message %}
+        <div class="message">{{ message }}</div>
+    {% endif %}
+    <div id="videoContainer">
+        {% if embed_url %}
+            <iframe 
+                width="560" 
+                height="315" 
+                src="{{ embed_url }}"
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+            </iframe>
+        {% endif %}
+        {% if error %}
+            <p style="color: red;">{{ error }}</p>
+        {% endif %}
+    </div>
+    {% if metadata %}
+        <div id="metadata">
+            <h4>Video Metadata:</h4>
+            <pre>{{ metadata | tojson(indent=2) }}</pre>
+            <p>Metadata file: {{ csv_file }}</p>
+        </div>
+    {% endif %}
+</body>
+</html>
+'''
