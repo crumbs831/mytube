@@ -1,0 +1,10 @@
+flask==3.0.0
+yt-dlp==2023.11.16
+opencv-python
+numpy
+SpeechRecognition
+moviepy
+# torch used brew on OSX
+transformers
+flask_sqlalchemy
+standard-aifc
