@@ -2,8 +2,12 @@ import csv
 import os
 from flask import current_app
 
+def get_csv_path():
+    return current_app.config['CSV_FILE']
+
 def video_exists_in_csv(video_id):
-    csv_file = current_app.config['CSV_FILE']
+    csv_file = get_csv_path()
+    # ... rest of the function remains the same
     try:
         if not os.path.exists(csv_file):
             return False
