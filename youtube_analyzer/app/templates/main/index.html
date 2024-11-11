@@ -91,12 +91,43 @@
             <p style="color: red;">{{ error }}</p>
         {% endif %}
     </div>
+    <!-- Add this to your existing form -->
+    <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" id="analyze" name="analyze">
+        <label class="form-check-label" for="analyze">Perform video analysis</label>
+    </div>
     {% if metadata %}
         <div id="metadata">
             <h4>Video Metadata:</h4>
             <pre>{{ metadata | tojson(indent=2) }}</pre>
             <p>Metadata file: {{ csv_file }}</p>
         </div>
+    {% endif %}
+    <!-- Add this after your existing metadata display -->
+    {% if analysis_report %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">Video Analysis Report</h5>
+        </div>
+        <div class="card-body">
+            <h6>Content Summary</h6>
+            <ul>
+                <li>Duration: {{ analysis_report.content_summary.duration }}</li>
+                <li>Frame Count: {{ analysis_report.content_summary.frame_count }}</li>
+                <li>Main Objects: {{ analysis_report.content_summary.main_objects|join(', ') }}</li>
+            </ul>
+            
+            <h6>Dominant Scenes</h6>
+            <ul>
+            {% for scene, count in analysis_report.content_summary.dominant_scenes.items() %}
+                <li>{{ scene }}: {{ count }}</li>
+            {% endfor %}
+            </ul>
+            
+            <h6>Transcript</h6>
+            <p>{{ analysis_report.content_summary.transcript }}</p>
+        </div>
+    </div>
     {% endif %}
 </body>
 </html>
