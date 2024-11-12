@@ -4,10 +4,59 @@ import os
 
 app = Flask(__name__)
 
-# Store your API key securely (preferably as an environment variable)
-YOUTUBE_API_KEY = 'AIzaSyBfCbZW4ci4azQVQOqN_h1T5YAJTcKdAtE'  # Replace with your actual API key
+# Define HTML_TEMPLATE at the top, before any routes
+HTML_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Analyzer</title>
+    <style>
+        body { 
+            background: black; 
+            color: white; 
+            font-family: Arial; 
+            text-align: center; 
+            padding: 20px; 
+        }
+        input { 
+            width: 300px; 
+            padding: 10px; 
+            margin: 10px; 
+        }
+        button { 
+            background: red; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            cursor: pointer; 
+        }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>YouTube Video Analyzer</h1>
+    <form method="POST">
+        <input type="text" name="url" placeholder="Enter YouTube URL">
+        <button type="submit">Analyze</button>
+    </form>
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+    {% if embed_url %}
+        <iframe width="560" height="315" src="{{ embed_url }}" frameborder="0" allowfullscreen></iframe>
+    {% endif %}
+    {% if metadata %}
+        <pre>{{ metadata | tojson(indent=2) }}</pre>
+    {% endif %}
+</body>
+</html>
+'''
+
+# Get API key from environment variable
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
 def get_video_id(url):
+    """Extract video ID from URL"""
     if 'youtube.com/watch?v=' in url:
         return url.split('watch?v=')[1].split('&')[0]
     elif 'youtu.be/' in url:
@@ -15,56 +64,54 @@ def get_video_id(url):
     return None
 
 def get_video_info(video_id):
-    youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-    
+    """Get video information using YouTube API"""
     try:
-        # Get video details
-        video_response = youtube.videos().list(
-            part='snippet,statistics,contentDetails',
+        youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+        response = youtube.videos().list(
+            part='snippet,statistics',
             id=video_id
         ).execute()
 
-        if not video_response['items']:
+        if not response['items']:
             return None
 
-        video_data = video_response['items'][0]
-        
+        video = response['items'][0]
         return {
-            'video_id': video_id,
-            'title': video_data['snippet']['title'],
-            'description': video_data['snippet']['description'][:1000],
-            'view_count': video_data['statistics'].get('viewCount', 0),
-            'like_count': video_data['statistics'].get('likeCount', 0),
-            'channel': video_data['snippet']['channelTitle'],
-            'published_at': video_data['snippet']['publishedAt'],
-            'duration': video_data['contentDetails']['duration']
+            'title': video['snippet']['title'],
+            'views': video['statistics'].get('viewCount', 0),
+            'likes': video['statistics'].get('likeCount', 0),
+            'channel': video['snippet']['channelTitle'],
+            'published': video['snippet']['publishedAt']
         }
     except Exception as e:
-        print(f"Error fetching video info: {str(e)}")
+        print(f"API Error: {str(e)}")
         return None
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    embed_url = None
-    metadata = None
-    error = None
-
     if request.method == 'POST':
         url = request.form.get('url', '').strip()
-        if url:
-            video_id = get_video_id(url)
-            if video_id:
-                metadata = get_video_info(video_id)
-                if metadata:
-                    embed_url = f'https://www.youtube.com/embed/{video_id}'
-                else:
-                    error = "Could not fetch video information"
-            else:
-                error = "Invalid YouTube URL"
+        if not url:
+            return render_template_string(HTML_TEMPLATE, error="Please enter a URL")
 
-    return render_template_string(
-        HTML_TEMPLATE,
-        embed_url=embed_url,
-        metadata=metadata,
-        error=error
-    )
+        video_id = get_video_id(url)
+        if not video_id:
+            return render_template_string(HTML_TEMPLATE, error="Invalid YouTube URL")
+
+        if not YOUTUBE_API_KEY:
+            return render_template_string(HTML_TEMPLATE, error="YouTube API key not configured")
+
+        metadata = get_video_info(video_id)
+        if not metadata:
+            return render_template_string(HTML_TEMPLATE, error="Could not fetch video information")
+
+        return render_template_string(
+            HTML_TEMPLATE,
+            embed_url=f"https://www.youtube.com/embed/{video_id}",
+            metadata=metadata
+        )
+
+    return render_template_string(HTML_TEMPLATE)
+
+if __name__ == '__main__':
+    app.run(debug=True)
