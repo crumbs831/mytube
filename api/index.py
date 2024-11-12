@@ -1,51 +1,70 @@
-# api/index.py
 from flask import Flask, render_template_string, request
-import yt_dlp
+from googleapiclient.discovery import build
+import os
 
 app = Flask(__name__)
 
-# Minimize HTML template
-HTML_TEMPLATE = '''
-<!DOCTYPE html>
-<html>
-<head><title>YouTube Analyzer</title></head>
-<body style="background:black;color:white;text-align:center">
-    <form method="POST">
-        <input name="url" placeholder="YouTube URL">
-        <button>Analyze</button>
-    </form>
-    {% if embed_url %}
-        <iframe width="560" height="315" src="{{ embed_url }}" frameborder="0" allowfullscreen></iframe>
-    {% endif %}
-    {% if metadata %}<pre>{{ metadata | tojson(indent=2) }}</pre>{% endif %}
-</body>
-</html>
-'''
+# Store your API key securely (preferably as an environment variable)
+YOUTUBE_API_KEY = 'AIzaSyBfCbZW4ci4azQVQOqN_h1T5YAJTcKdAtE'  # Replace with your actual API key
 
-def extract_video_info(url):
-    with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
-        info = ydl.extract_info(url, download=False)
+def get_video_id(url):
+    if 'youtube.com/watch?v=' in url:
+        return url.split('watch?v=')[1].split('&')[0]
+    elif 'youtu.be/' in url:
+        return url.split('youtu.be/')[1].split('?')[0]
+    return None
+
+def get_video_info(video_id):
+    youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+    
+    try:
+        # Get video details
+        video_response = youtube.videos().list(
+            part='snippet,statistics,contentDetails',
+            id=video_id
+        ).execute()
+
+        if not video_response['items']:
+            return None
+
+        video_data = video_response['items'][0]
+        
         return {
-            'video_id': info.get('id', ''),
-            'title': info.get('title', ''),
-            'views': info.get('view_count', 0)
+            'video_id': video_id,
+            'title': video_data['snippet']['title'],
+            'description': video_data['snippet']['description'][:1000],
+            'view_count': video_data['statistics'].get('viewCount', 0),
+            'like_count': video_data['statistics'].get('likeCount', 0),
+            'channel': video_data['snippet']['channelTitle'],
+            'published_at': video_data['snippet']['publishedAt'],
+            'duration': video_data['contentDetails']['duration']
         }
+    except Exception as e:
+        print(f"Error fetching video info: {str(e)}")
+        return None
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    embed_url = None
+    metadata = None
+    error = None
+
     if request.method == 'POST':
         url = request.form.get('url', '').strip()
         if url:
-            try:
-                metadata = extract_video_info(url)
-                return render_template_string(
-                    HTML_TEMPLATE,
-                    embed_url=f"https://www.youtube.com/embed/{metadata['video_id']}",
-                    metadata=metadata
-                )
-            except Exception as e:
-                return f"Error: {str(e)}"
-    return render_template_string(HTML_TEMPLATE)
+            video_id = get_video_id(url)
+            if video_id:
+                metadata = get_video_info(video_id)
+                if metadata:
+                    embed_url = f'https://www.youtube.com/embed/{video_id}'
+                else:
+                    error = "Could not fetch video information"
+            else:
+                error = "Invalid YouTube URL"
 
-if __name__ == '__main__':
-    app.run()
+    return render_template_string(
+        HTML_TEMPLATE,
+        embed_url=embed_url,
+        metadata=metadata,
+        error=error
+    )
