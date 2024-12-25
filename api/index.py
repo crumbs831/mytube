@@ -68,7 +68,7 @@ def get_video_info(video_id):
     try:
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         response = youtube.videos().list(
-            part='snippet,statistics',
+            part='snippet,statistics,contentDetails,topicDetails,status',
             id=video_id
         ).execute()
 
@@ -76,16 +76,48 @@ def get_video_info(video_id):
             return None
 
         video = response['items'][0]
-        return {
+        video_info = {
+            # Basic Info
             'title': video['snippet']['title'],
-            'views': video['statistics'].get('viewCount', 0),
-            'likes': video['statistics'].get('likeCount', 0),
-            'channel': video['snippet']['channelTitle'],
-            'published': video['snippet']['publishedAt']
+            'description': video['snippet'].get('description', ''),
+            'publishedAt': video['snippet']['publishedAt'],
+            'channelId': video['snippet']['channelId'],
+            'channelTitle': video['snippet']['channelTitle'],
+            'tags': video['snippet'].get('tags', []),
+            'categoryId': video['snippet'].get('categoryId', ''),
+            'defaultLanguage': video['snippet'].get('defaultLanguage', ''),
+            'defaultAudioLanguage': video['snippet'].get('defaultAudioLanguage', ''),
+            
+            # Statistics
+            'viewCount': video['statistics'].get('viewCount', 0),
+            'likeCount': video['statistics'].get('likeCount', 0),
+            'commentCount': video['statistics'].get('commentCount', 0),
+            'favoriteCount': video['statistics'].get('favoriteCount', 0),
+            
+            # Content Details
+            'duration': video['contentDetails'].get('duration', ''),
+            'dimension': video['contentDetails'].get('dimension', ''),
+            'definition': video['contentDetails'].get('definition', ''),
+            'caption': video['contentDetails'].get('caption', ''),
+            'licensedContent': video['contentDetails'].get('licensedContent', False),
+            'projection': video['contentDetails'].get('projection', ''),
+            
+            # Status
+            'uploadStatus': video['status'].get('uploadStatus', ''),
+            'privacyStatus': video['status'].get('privacyStatus', ''),
+            'license': video['status'].get('license', ''),
+            'embeddable': video['status'].get('embeddable', False),
+            'publicStatsViewable': video['status'].get('publicStatsViewable', False),
+            
+            # Topic Details (if available)
+            'topicCategories': video.get('topicDetails', {}).get('topicCategories', [])
         }
+        
+        return video_info
     except Exception as e:
         print(f"API Error: {str(e)}")
         return None
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
